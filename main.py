@@ -9,6 +9,9 @@ logger = logging.getLogger('server_pinger')
 PING_FREQUENCY = 60
 TIMEOUT = 10
 
+OK_PREFIX = ':heavy_check_mark'
+FAIL_PREFIX = ':heavy_multiplication_x:'
+
 
 async def post_slack(session, message):
     await session.request('POST', url=SLACK_WEBHOOK_URL, json={'text': message})
