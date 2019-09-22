@@ -28,17 +28,17 @@ async def ping_server(server, session):
         if response.status not in [200, 301, 302]:
             logger.error(f'{server["name"]} FAIL')
             if server['previous_status'] == 'OK':
-                await post_slack(session, f'{server["name"]} responded with HTTP{response.status}')
+                await post_slack(session, f'{FAIL_PREFIX} - {server["name"]} responded with HTTP{response.status}')
                 server['previous_status'] = 'FAIL'
         else:
             logger.error(f'{server["name"]} OK')
             if server['previous_status'] == 'FAIL':
-                await post_slack(session, f'{server["name"]} is back up!')
+                await post_slack(session, f'{OK_PREFIX} - {server["name"]} is back up!')
                 server['previous_status'] = 'OK'
     except asyncio.TimeoutError:
         logger.error(f'{server["name"]} TIMEOUT')
         if server['previous_status'] == 'OK':
-            await post_slack(session, f'{server["name"]} timed out after {TIMEOUT} seconds')
+            await post_slack(session, f'{FAIL_PREFIX} - {server["name"]} timed out after {TIMEOUT} seconds')
             server['previous_status'] = 'FAIL'
     except aiohttp.client_exceptions.ClientConnectorError:
         logger.error(f'{server["name"]} CONNECTION_ERROR')
