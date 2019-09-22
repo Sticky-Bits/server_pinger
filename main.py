@@ -34,7 +34,7 @@ async def ping_server(server, session):
             logger.error(f'{server["name"]} OK')
             if server['previous_status'] == 'FAIL':
                 await post_slack(session, f'{server["name"]} is back up!')
-                server['previous_status'] == 'OK'
+                server['previous_status'] = 'OK'
     except asyncio.TimeoutError:
         logger.error(f'{server["name"]} TIMEOUT')
         if server['previous_status'] == 'OK':
