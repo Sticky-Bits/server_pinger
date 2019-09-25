@@ -2,15 +2,23 @@ import logging
 import asyncio
 import aiohttp
 
-from config import SERVERS, SLACK_WEBHOOK_URL
+from db import get_slack_url, get_servers, set_server_status
 
 logger = logging.getLogger('server_pinger')
+logging.basicConfig(
+    level=logging.INFO,
+    filename='pingping.log',
+    filemode='w',
+    format='%(name)s - %(levelname)s - %(message)s',
+)
 
-PING_FREQUENCY = 60
 TIMEOUT = 10
 
-OK_PREFIX = ':heavy_check_mark'
+OK_PREFIX = ':heavy_check_mark:'
 FAIL_PREFIX = ':heavy_multiplication_x:'
+
+SLACK_WEBHOOK_URL = get_slack_url()
+SERVERS = get_servers()
 
 
 async def post_slack(session, message):
@@ -23,35 +31,34 @@ async def get(url, session):
 
 
 async def ping_server(server, session):
+    name, url, previous_status = server
     try:
-        response = await get(server['url'], session)
+        response = await get(url, session)
         if response.status not in [200, 301, 302]:
-            logger.error(f'{server["name"]} FAIL')
-            if server['previous_status'] == 'OK':
-                await post_slack(session, f'{FAIL_PREFIX} - {server["name"]} responded with HTTP{response.status}')
-                server['previous_status'] = 'FAIL'
+            logger.info(f'{name} FAIL')
+            if previous_status == 'OK':
+                await post_slack(session, f'{FAIL_PREFIX} - {name} responded with HTTP{response.status}')
+                set_server_status(name, 'FAIL')
         else:
-            logger.error(f'{server["name"]} OK')
-            if server['previous_status'] == 'FAIL':
-                await post_slack(session, f'{OK_PREFIX} - {server["name"]} is back up!')
-                server['previous_status'] = 'OK'
+            logger.info(f'{name} OK')
+            if previous_status == 'FAIL':
+                await post_slack(session, f'{OK_PREFIX} - {name} is back up!')
+                set_server_status(name, 'OK')
     except asyncio.TimeoutError:
-        logger.error(f'{server["name"]} TIMEOUT')
-        if server['previous_status'] == 'OK':
-            await post_slack(session, f'{FAIL_PREFIX} - {server["name"]} timed out after {TIMEOUT} seconds')
-            server['previous_status'] = 'FAIL'
+        logger.info(f'{name} TIMEOUT')
+        if previous_status == 'OK':
+            await post_slack(session, f'{FAIL_PREFIX} - {name} timed out after {TIMEOUT} seconds')
+            set_server_status(name, 'FAIL')
     except aiohttp.client_exceptions.ClientConnectorError:
-        logger.error(f'{server["name"]} CONNECTION_ERROR')
-    await asyncio.sleep(PING_FREQUENCY)
+        logger.info(f'{name} CONNECTION_ERROR')
 
 
 async def main():
     async with aiohttp.ClientSession() as session:
-        while True:
-            logger.info('Pinging servers...')
-            # Make a task for each server then await them all
-            tasks = [ping_server(server, session) for server in SERVERS]
-            await asyncio.gather(*tasks)
+        logger.info('Pinging servers...')
+        # Make a task for each server then await them all
+        tasks = [ping_server(server, session) for server in SERVERS]
+        await asyncio.gather(*tasks)
 
 
 if __name__ == '__main__':
