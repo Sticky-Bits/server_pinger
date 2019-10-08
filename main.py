@@ -8,8 +8,7 @@ logger = logging.getLogger('server_pinger')
 logging.basicConfig(
     level=logging.INFO,
     filename='pingping.log',
-    filemode='w',
-    format='%(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
 
 TIMEOUT = 10
